@@ -1,14 +1,21 @@
+
+#include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
 #include <Ds1302.h>
+// #include <ESPAsyncWebServer.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
 
-#include "blink.h"
-#include "connector.h"
+#include <string>
+
+#include "display.h"
+// #include "handler.h"
 #include "info.h"  // файл с конфигурационными данными, в том числе паролем WiFi, url с локацией и тому подобной информации
 #include "time.h"
-#include "timeUpdater.h"
-#include "weatherUpdater.h"
+#include "updaters/blink.h"
+#include "updaters/connector.h"
+#include "updaters/timeUpdater.h"
+#include "updaters/weatherUpdater.h"
 
 Ds1302 rtc(PIN_ENA, PIN_CLK, PIN_DAT);  // объект для работы с часами Ds1302
 
@@ -32,6 +39,7 @@ TaskHandle_t BlinkHandle = NULL;          //
 TaskHandle_t ConnectorHandle = NULL;      //
 TaskHandle_t TimeDisplayHandle = NULL;    //
 TaskHandle_t WeatherUpdateHandle = NULL;  //
+TaskHandle_t LedRun = NULL;
 
 #define TIME_UPDATE_STACK_SIZE \
     2048  // Размер стека задачи по обновлению времени
@@ -39,43 +47,12 @@ TaskHandle_t WeatherUpdateHandle = NULL;  //
 #define CONNECTOR_STACK_SIZE 2048  // -- по соединению с интернетом
 #define WEATHER_UPDATE_STACK_SIZE 4096  // -- по обновлению погоды
 
-void time_display(void *deskriptor) {
-    while (1) {
-        xSemaphoreTake(TIME_DISPLAY_MUTEX, portMAX_DELAY);
-
-        static uint8_t last_second = 0;
-        Serial.print("20");
-        Serial.print(TIME_DISPLAY_VAR.year);  // 00-99
-        Serial.print('-');
-        if (TIME_DISPLAY_VAR.month < 10) Serial.print('0');
-        Serial.print(TIME_DISPLAY_VAR.month);  // 01-12
-        Serial.print('-');
-        if (TIME_DISPLAY_VAR.day < 10) Serial.print('0');
-        Serial.print(TIME_DISPLAY_VAR.day);  // 01-31
-        Serial.print("\t");
-        if (TIME_DISPLAY_VAR.hour < 10) Serial.print('0');
-        Serial.print(TIME_DISPLAY_VAR.hour);  // 00-23
-        Serial.print(':');
-        if (TIME_DISPLAY_VAR.minute < 10) Serial.print('0');
-        Serial.print(TIME_DISPLAY_VAR.minute);  // 00-59
-        Serial.print(':');
-        if (TIME_DISPLAY_VAR.second < 10) Serial.print('0');
-        Serial.print(TIME_DISPLAY_VAR.second);  // 00-59
-
-        xSemaphoreGive(TIME_DISPLAY_MUTEX);
-
-        xSemaphoreTake(WEATHER_DISPLAY_MUTEX, portMAX_DELAY);
-
-        Serial.printf("\t Temperature: %f, weather_code: %d\n",
-                      weather_data.temp, weather_data.weather_code);
-
-        xSemaphoreGive(WEATHER_DISPLAY_MUTEX);
-
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-}
+// AsyncWebServer server(80);
+// String command = "";
 
 void setup() {
+    pixels.begin();
+
     Serial.begin(9600);
 
     rtc.init();  // инициализация RTC
@@ -88,8 +65,9 @@ void setup() {
 
     WiFi.onEvent(
         updateTime,
-        ARDUINO_EVENT_WIFI_STA_CONNECTED);  // обновление времени по NTP после
-                                            // подключения к WiFi
+        ARDUINO_EVENT_WIFI_STA_CONNECTED);  // обновление времени по NTP
+    // после
+    // подключения к WiFi
 
     xTaskCreate(Blink, "Blink", BLINK_STACK_SIZE, NULL, 1, &BlinkHandle);
     xTaskCreate(connect, "Wifi", CONNECTOR_STACK_SIZE, NULL, 1,
@@ -99,11 +77,35 @@ void setup() {
     xTaskCreate(weather_update, "Weather update", WEATHER_UPDATE_STACK_SIZE,
                 NULL, 1, &WeatherUpdateHandle);
 
+    // server.on("/command", HTTP_GET, [](AsyncWebServerRequest *request) {
+    //     if (request->hasParam("value")) {
+    //         command = request->getParam("value")
+    //                       ->value();  // Получение команды из параметра
+
+    //         auto result = std::to_string(handler(command.c_str())).c_str();
+
+    //         request->send(200, "text/plain", result);
+    //     } else {
+    //         request->send(400, "text/plain",
+    //                       "Bad Request: command not specified");
+    //     }
+    // });
+
+    // server.on("/temperature", HTTP_GET, [](AsyncWebServerRequest *request) {
+    //     xSemaphoreTake(WEATHER_DISPLAY_MUTEX, portMAX_DELAY);
+
+    //     double temp = weather_data.temp;
+
+    //     xSemaphoreGive(WEATHER_DISPLAY_MUTEX);
+
+    //     request->send(200, "text/plain", std::to_string(temp).c_str());
+    // });
+
+    // server.begin();
+
     // --------------------------------------------------------------------------------------------------------------------------------
 
-    xTaskCreate(
-        time_display, "Time display", 2048, NULL, 1,
-        &TimeDisplayHandle);  // Пока что используется вместо вывода на матрицу
+    xTaskCreate(display, "Led run", 4096, NULL, 1, &LedRun);
 }
 
 void loop() {}

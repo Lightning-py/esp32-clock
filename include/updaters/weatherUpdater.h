@@ -4,7 +4,8 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
 
-extern const char* url;
+#include "info.h"
+
 extern SemaphoreHandle_t WEATHER_DISPLAY_MUTEX;
 typedef struct {
     double temp;
@@ -29,17 +30,19 @@ void weather_update(void* deskriptor) {
 
         if (httpResponseCode > 0) {
             String payload = http.getString();  // Получение ответа
-            // Serial.println("Ответ от сервера:");
-            // Serial.println(payload);  // Вывод ответа на серийный порт
+
+#ifdef DEBUG
+
+            Serial.println("Ответ от сервера:");
+            Serial.println(payload);  // Вывод ответа на серийный порт
+#endif                                // DEBUG
 
             JsonDocument doc;  // Создание документа JSON
 
             DeserializationError error = deserializeJson(doc, payload);
 
             if (error) {
-                Serial.print("Ошибка декодирования JSON: ");
-
-                Serial.println(error.f_str());
+                Serial.printf("Ошибка декодирования JSON: %s", error.f_str());
 
                 return;
             }

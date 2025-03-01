@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-extern const int LED_PIN;
+#include "info.h"
 
 void Blink(void *pvParameters) {
     bool status = false;

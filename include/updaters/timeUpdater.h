@@ -4,36 +4,39 @@
 #include <Ds1302.h>
 #include <WiFi.h>
 
+#include "info.h"
 #include "time.h"
-
-extern const char *ntpServer;
-extern const long gmtOffset_sec;
 
 extern Ds1302 rtc;
 extern Ds1302::DateTime TIME_DISPLAY_VAR;
 extern SemaphoreHandle_t TIME_DISPLAY_MUTEX;
 
-void update_RTC_time(struct tm timeinfo) {}
-
 void updateTime(WiFiEvent_t event, WiFiEventInfo_t info) {
     struct tm tm1;
     getLocalTime(&tm1);
 
+#ifdef DEBUG
+
     Serial.printf("\nTime was %d.%d.%d %d:%d\n", tm1.tm_year, tm1.tm_mon,
                   tm1.tm_mday, tm1.tm_hour, tm1.tm_min);
+#endif  // DEBUG
 
     configTime(gmtOffset_sec, 0, ntpServer);
 
     struct tm tm2;
     getLocalTime(&tm2);
 
+#ifdef DEBUG
     Serial.printf("\nTime became %d.%d.%d %d:%d\n", tm2.tm_year, tm2.tm_mon,
                   tm2.tm_mday, tm2.tm_hour, tm2.tm_min);
+#endif  // DEBUG
 
     if (tm1.tm_year != tm2.tm_year || tm1.tm_mon != tm2.tm_mon ||
         tm1.tm_mday != tm2.tm_mday || tm1.tm_hour != tm2.tm_hour ||
         tm1.tm_sec != tm2.tm_sec) {
+#ifdef DEBUG
         Serial.println("\nUpdating rtc time\n");
+#endif  // DEBUG
 
         Ds1302::DateTime dt = {.year = (uint8_t)tm2.tm_year,
                                .month = Ds1302::MONTH_FEB,
