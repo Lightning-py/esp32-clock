@@ -15,10 +15,11 @@ extern SemaphoreHandle_t WEATHER_DISPLAY_MUTEX;
 enum state { TIME, WEATHER, DATE };
 enum date_state { DATE_MONTH, YEAR, DAY_OF_WEEK };
 
+auto matrix = LedMatrix(std::move(pixels), 32, 8);
+
 void display(void* desktiptor) {
     state st = TIME;
     date_state date_st = DATE_MONTH;
-    auto matrix = LedMatrix(std::move(pixels), 32, 8);
 
     while (1) {
         switch (st) {

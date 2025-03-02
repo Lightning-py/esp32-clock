@@ -16,7 +16,12 @@ class LedMatrix {
 
    public:
     explicit LedMatrix(Adafruit_NeoPixel&& pixel_object, int LED_X, int LED_Y)
-        : pixel_object(pixel_object), LED_X(LED_X), LED_Y(LED_Y) {}
+        : pixel_object(pixel_object), LED_X(LED_X), LED_Y(LED_Y) {
+        pixel_object.begin();
+    }
+
+    int getLedX() { return LED_X; }
+    int getLedY() { return LED_Y; }
 
     void setColor(int x, int y, int r, int g, int b) {
         if (x % 2 == 0) {
